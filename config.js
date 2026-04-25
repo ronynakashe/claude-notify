@@ -2,7 +2,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const CONFIG_PATH = path.join(os.homedir(), ".claude-notify.json");
+const CONFIG_PATH = path.join(os.homedir(), ".claude-ready.json");
 
 function loadConfig() {
   if (!fs.existsSync(CONFIG_PATH)) return null;

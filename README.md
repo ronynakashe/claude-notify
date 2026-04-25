@@ -1,4 +1,4 @@
-# 🚀 Claude Notify
+# 🚀 Claude Ready
 
 > ⚠️ **This is a terminal (CLI) tool — NOT a Claude command**
 > You run it in your terminal, not inside Claude.
@@ -22,7 +22,7 @@ Now you:
 Run one command:
 
 ```bash
-claude-notify
+claude-ready
 ```
 
 Then go live your life.
@@ -34,13 +34,13 @@ We’ll email you when Claude is usable again.
 ## ⚡ Install
 
 ```bash
-npm install -g claude-notify
+npm install -g claude-ready
 ```
 
-👉 After installing, run it from your terminal:
+👉 After installing and setup, run it from your terminal:
 
 ```bash
-claude-notify
+claude-ready
 ```
 
 ❌ Not inside Claude
@@ -51,7 +51,7 @@ claude-notify
 
 ## 🔐 Setup (1 minute)
 
-Claude Notify uses **your own Gmail account** to send you notifications.
+Claude Ready uses **your own Gmail account** to send you notifications.
 
 ### Step 1 — Enable 2FA
 
@@ -64,7 +64,7 @@ Search for **App Passwords** → generate one for "Mail"
 ### Step 3 — Run setup
 
 ```bash
-claude-notify setup
+claude-ready setup
 ```
 
 Enter:
@@ -75,7 +75,7 @@ Enter:
 Your credentials are stored locally on your machine:
 
 ```bash
-~/.claude-notify.json
+~/.claude-ready.json
 ```
 
 ---
@@ -87,7 +87,7 @@ When Claude blocks you:
 👉 Open your terminal and run:
 
 ```bash
-claude-notify
+claude-ready
 ```
 
 Example output:
@@ -125,10 +125,10 @@ Go back to coding.
 ## 🧪 Commands
 
 ```bash
-claude-notify           # schedule notification
-claude-notify setup     # configure email
-claude-notify test      # send test email
-claude-notify --help    # show help
+claude-ready           # schedule notification
+claude-ready setup     # configure email
+claude-ready test      # send test email
+claude-ready --help    # show help
 ```
 
 ---
@@ -143,7 +143,7 @@ claude-notify --help    # show help
 
 ## ⚠️ Common Mistake
 
-> “I typed `claude-notify` inside Claude and nothing happened”
+> “I typed `claude-ready` inside Claude and nothing happened”
 
 Yeah… that won’t work 😄
 

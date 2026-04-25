@@ -1,17 +1,30 @@
 {
-  "name": "claude-notify",
+  "name": "claude-ready",
   "version": "1.0.0",
-  "description": "Notify me when Claude session resets via email",
+  "description": "A CLI tool that emails you when Claude is ready again",
   "main": "index.js",
   "bin": {
-    "claude-notify": "./index.js"
+    "claude-ready": "./index.js"
   },
+  "files": [
+    "index.js",
+    "config.js",
+    "README.md"
+  ],
   "scripts": {
     "start": "node index.js"
   },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "cli",
+    "notification",
+    "developer-tools",
+    "email"
+  ],
+  "author": "Roni Nakache",
+  "license": "MIT",
   "dependencies": {
     "nodemailer": "^8.0.6"
-  },
-  "author": "",
-  "license": "MIT"
+  }
 }

@@ -19,7 +19,7 @@ function askQuestion(rl, question) {
 }
 
 async function runSetup() {
-  console.log("🔧 Setting up Claude Notify...");
+  console.log("🔧 Setting up Claude Ready...");
   console.log("⚠️ This is a terminal command, not a Claude command.\n");
 
   const rl = readline.createInterface({
@@ -40,7 +40,7 @@ async function runSetup() {
   saveConfig({ email, password });
 
   console.log("\n✅ Config saved.");
-  console.log("📬 Run `claude-notify test` to send a test email.");
+  console.log("📬 Run `claude-ready test` to send a test email.");
 }
 
 function getClaudeToken() {
@@ -149,7 +149,7 @@ async function sendEmail(config, resetDate, isTest = false) {
   const transporter = createTransporter(config);
 
   const subject = isTest
-    ? "🧪 Claude Notify test email"
+    ? "🧪 Claude Ready test email"
     : "🚀 Claude is back. Stop pretending to rest.";
 
   const text = isTest
@@ -225,14 +225,14 @@ async function main() {
 
   if (args[0] === "help" || args[0] === "--help" || args[0] === "-h") {
     console.log(`
-Claude Notify
+Claude Ready - Get emailed when Claude is ready again
 
 ⚠️ This is a terminal command, not a Claude command.
 
 Usage:
-  claude-notify setup   Configure Gmail
-  claude-notify test    Send test email
-  claude-notify         Email you when Claude is ready again
+  claude-ready setup   Configure Gmail
+  claude-ready test    Send test email
+  claude-ready         Email you when Claude is ready again
 `);
     return;
   }
@@ -240,7 +240,7 @@ Usage:
   const config = loadConfig();
 
   if (!config) {
-    console.log("❌ Run `claude-notify setup` first.");
+    console.log("❌ Run `claude-ready setup` first.");
     return;
   }
 
