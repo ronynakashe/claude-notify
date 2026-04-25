@@ -1,0 +1,17 @@
+{
+  "name": "claude-notify",
+  "version": "1.0.0",
+  "description": "Notify me when Claude session resets via email",
+  "main": "index.js",
+  "bin": {
+    "claude-notify": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "nodemailer": "^8.0.6"
+  },
+  "author": "",
+  "license": "MIT"
+}
