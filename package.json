@@ -1,6 +1,6 @@
 {
   "name": "claude-ready",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A CLI tool that emails you when Claude is ready again",
   "main": "index.js",
   "bin": {
