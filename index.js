@@ -63,11 +63,13 @@ function getTokenMac() {
 }
 
 function getTokenWindows() {
-  // Reads the Claude OAuth credential from Windows Credential Manager using
-  // the Win32 CredRead API via inline C# compiled at runtime with Add-Type.
-  // keytar (Claude Code’s credential lib) stores credentials as CRED_TYPE_GENERIC (1)
-  // with the service name as the target — same name as the macOS Keychain service.
+  // keytar (Claude Code’s credential lib) stores Windows Credential Manager entries
+  // as target = service + "/" + account, where account is the OS username.
+  const username = os.userInfo().username;
+  const target = `${KEYCHAIN_SERVICE}/${username}`;
+
   const script = `
+$ProgressPreference = ‘SilentlyContinue’
 $code = @"
 using System;
 using System.Runtime.InteropServices;
@@ -96,16 +98,17 @@ public class CredManager {
 }
 "@
 Add-Type -TypeDefinition $code -Language CSharp
-[CredManager]::Get(‘${KEYCHAIN_SERVICE}’)
+[CredManager]::Get(‘${target}’)
 `;
 
   try {
-    // Base64-encode the script as UTF-16LE to avoid all shell quoting issues.
+    // Base64-encode as UTF-16LE to avoid all shell quoting issues.
+    // -OutputFormat Text prevents PowerShell from wrapping output in CLIXML.
     const encoded = Buffer.from(script, "utf16le").toString("base64");
 
     const raw = execFileSync(
       "powershell",
-      ["-NoProfile", "-NonInteractive", "-EncodedCommand", encoded],
+      ["-NoProfile", "-NonInteractive", "-OutputFormat", "Text", "-EncodedCommand", encoded],
       { encoding: "utf-8", timeout: 10000 }
     ).trim();
 
@@ -250,11 +253,17 @@ async function runNotify(config) {
   const token = getClaudeToken();
   const usage = await fetchClaudeUsage(token);
 
-  const resetMs = parseResetTime(usage?.five_hour?.resets_at);
+  const fiveHour = usage?.five_hour;
+
+  if (!fiveHour || fiveHour.utilization < 100) {
+    console.log("✅ Claude isn’t blocked. Go code.");
+    return;
+  }
+
+  const resetMs = parseResetTime(fiveHour.resets_at);
 
   if (!resetMs) {
-    console.log("⚠️ No reset time found.");
-    console.log("Either Claude is usable, or Anthropic changed something to ruin our fun.");
+    console.log("⚠️ Limit hit but no reset time found. Anthropic may have changed something.");
     return;
   }
 
