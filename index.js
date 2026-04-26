@@ -43,7 +43,7 @@ async function runSetup() {
   console.log("📬 Run `claude-ready test` to send a test email.");
 }
 
-function getClaudeToken() {
+function getTokenMac() {
   try {
     const username = process.env.USER || os.userInfo().username;
 
@@ -60,6 +60,73 @@ function getClaudeToken() {
     console.error("Make sure you are logged in to Claude Code on this Mac.");
     process.exit(1);
   }
+}
+
+function getTokenWindows() {
+  // Reads the Claude OAuth credential from Windows Credential Manager using
+  // the Win32 CredRead API via inline C# compiled at runtime with Add-Type.
+  // keytar (Claude Code’s credential lib) stores credentials as CRED_TYPE_GENERIC (1)
+  // with the service name as the target — same name as the macOS Keychain service.
+  const script = `
+$code = @"
+using System;
+using System.Runtime.InteropServices;
+public class CredManager {
+  [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+  private struct CREDENTIAL {
+    public uint Flags; public uint Type;
+    public IntPtr TargetName; public IntPtr Comment;
+    public long LastWritten;
+    public uint CredentialBlobSize; public IntPtr CredentialBlob;
+    public uint Persist; public uint AttributeCount; public IntPtr Attributes;
+    public IntPtr TargetAlias; public IntPtr UserName;
+  }
+  [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+  private static extern bool CredRead(string target, uint type, uint flags, out IntPtr credential);
+  [DllImport("advapi32.dll")]
+  private static extern void CredFree(IntPtr credential);
+  public static string Get(string target) {
+    IntPtr ptr;
+    if (!CredRead(target, 1, 0, out ptr)) return null;
+    try {
+      var c = (CREDENTIAL)Marshal.PtrToStructure(ptr, typeof(CREDENTIAL));
+      return Marshal.PtrToStringUni(c.CredentialBlob, (int)c.CredentialBlobSize / 2);
+    } finally { CredFree(ptr); }
+  }
+}
+"@
+Add-Type -TypeDefinition $code -Language CSharp
+[CredManager]::Get(‘${KEYCHAIN_SERVICE}’)
+`;
+
+  try {
+    // Base64-encode the script as UTF-16LE to avoid all shell quoting issues.
+    const encoded = Buffer.from(script, "utf16le").toString("base64");
+
+    const raw = execFileSync(
+      "powershell",
+      ["-NoProfile", "-NonInteractive", "-EncodedCommand", encoded],
+      { encoding: "utf-8", timeout: 10000 }
+    ).trim();
+
+    const creds = JSON.parse(raw);
+    return creds?.claudeAiOauth?.accessToken;
+  } catch (error) {
+    console.error("❌ Couldn’t read Claude token from Windows Credential Manager.");
+    console.error("Make sure you are logged in to Claude Code on this Windows machine.");
+    process.exit(1);
+  }
+}
+
+function getClaudeToken() {
+  const platform = process.platform;
+
+  if (platform === "darwin") return getTokenMac();
+  if (platform === "win32") return getTokenWindows();
+
+  console.error(`❌ Unsupported platform: ${platform}.`);
+  console.error("claude-ready supports macOS and Windows only.");
+  process.exit(1);
 }
 
 function fetchClaudeUsage(token) {

@@ -139,7 +139,7 @@ claude-ready --help    # show help
 
 ## 🚧 Limitations
 
-- macOS only for now
+- macOS and Windows 10+ only (Linux not yet supported)
 - Gmail only for now
 - Claude Code only
 - Your laptop must stay awake until the email is sent
@@ -199,7 +199,7 @@ Claude Ready is local-first.
 
 - Your Gmail credentials are stored only on your machine
 - Nothing is sent to a backend
-- The tool reads your local Claude Code credentials from macOS Keychain
+- The tool reads your local Claude Code credentials from the system credential store (macOS Keychain or Windows Credential Manager)
 - You can delete the config anytime:
 
 ```bash
