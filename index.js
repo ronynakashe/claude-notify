@@ -2,7 +2,9 @@
 
 const https = require("https");
 const { execFileSync } = require("child_process");
+const fs = require("fs");
 const os = require("os");
+const path = require("path");
 const nodemailer = require("nodemailer");
 const readline = require("readline");
 const { loadConfig, saveConfig } = require("./config");
@@ -43,23 +45,45 @@ async function runSetup() {
   console.log("📬 Run `claude-ready test` to send a test email.");
 }
 
-function getClaudeToken() {
+function getTokenFromFile() {
+  const configDir = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude");
+  const credPath = path.join(configDir, ".credentials.json");
+  try {
+    const creds = JSON.parse(fs.readFileSync(credPath, "utf-8"));
+    return creds?.claudeAiOauth?.accessToken || null;
+  } catch {
+    return null;
+  }
+}
+
+function getTokenMac() {
   try {
     const username = process.env.USER || os.userInfo().username;
-
     const raw = execFileSync(
       "security",
       ["find-generic-password", "-a", username, "-w", "-s", KEYCHAIN_SERVICE],
       { encoding: "utf-8", timeout: 5000 }
     ).trim();
-
     const creds = JSON.parse(raw);
-    return creds?.claudeAiOauth?.accessToken;
-  } catch (error) {
-    console.error("❌ Couldn’t read Claude token from macOS Keychain.");
-    console.error("Make sure you are logged in to Claude Code on this Mac.");
-    process.exit(1);
+    return creds?.claudeAiOauth?.accessToken || null;
+  } catch {
+    return null;
   }
+}
+
+function getClaudeToken() {
+  const token = getTokenFromFile() ?? (process.platform === "darwin" ? getTokenMac() : null);
+
+  if (token) return token;
+
+  const configDir = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude");
+  console.error("❌ Couldn’t find your Claude token.");
+  console.error(`Looked in: ${path.join(configDir, ".credentials.json")}`);
+  if (process.platform === "darwin") {
+    console.error(`         : macOS Keychain (${KEYCHAIN_SERVICE})`);
+  }
+  console.error("Make sure you are logged in to Claude Code and have run it at least once.");
+  process.exit(1);
 }
 
 function fetchClaudeUsage(token) {
@@ -183,11 +207,17 @@ async function runNotify(config) {
   const token = getClaudeToken();
   const usage = await fetchClaudeUsage(token);
 
-  const resetMs = parseResetTime(usage?.five_hour?.resets_at);
+  const fiveHour = usage?.five_hour;
+
+  if (!fiveHour || fiveHour.utilization < 100) {
+    console.log("✅ Claude isn’t blocked. Go code.");
+    return;
+  }
+
+  const resetMs = parseResetTime(fiveHour.resets_at);
 
   if (!resetMs) {
-    console.log("⚠️ No reset time found.");
-    console.log("Either Claude is usable, or Anthropic changed something to ruin our fun.");
+    console.log("⚠️ Limit hit but no reset time found. Anthropic may have changed something.");
     return;
   }
 

@@ -1,10 +1,10 @@
 {
   "name": "claude-ready",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A CLI tool that emails you when Claude is ready again",
   "main": "index.js",
   "bin": {
-    "claude-ready": "./index.js"
+    "claude-ready": "index.js"
   },
   "files": [
     "index.js",
