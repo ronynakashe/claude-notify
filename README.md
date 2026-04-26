@@ -137,9 +137,16 @@ claude-ready --help    # show help
 
 ---
 
+## 🖥️ Platform Support
+
+| Platform | Status | How it works |
+|----------|--------|-------------|
+| macOS | ✅ Supported | Reads `~/.claude/.credentials.json`, falls back to macOS Keychain |
+| Windows 10+ | ✅ Supported | Reads `~/.claude/.credentials.json` |
+| Linux | ❌ Not yet supported | — |
+
 ## 🚧 Limitations
 
-- macOS and Windows 10+ only (Linux not yet supported)
 - Gmail only for now
 - Claude Code only
 - Your laptop must stay awake until the email is sent
@@ -167,6 +174,14 @@ Yeah… that won’t work 😄
 
 * You haven’t hit the limit yet
 * Or Claude changed something (open an issue)
+
+### ❌ Couldn’t find your Claude token (Windows)
+
+Claude Ready reads your token from `~/.claude/.credentials.json` — a file Claude Code creates automatically when you log in.
+
+* Make sure you’ve installed and logged into **Claude Code** (the CLI), not just the Claude web app
+* Run `claude` at least once so it can write the credentials file
+* Check the file exists: `%USERPROFILE%\.claude\.credentials.json`
 
 ---
 
@@ -199,12 +214,24 @@ Claude Ready is local-first.
 
 - Your Gmail credentials are stored only on your machine
 - Nothing is sent to a backend
-- The tool reads your local Claude Code credentials from the system credential store (macOS Keychain or Windows Credential Manager)
+- The tool reads your local Claude Code credentials from `~/.claude/.credentials.json` (written by Claude Code itself), with a macOS Keychain fallback on Mac
 - You can delete the config anytime:
 
 ```bash
 rm ~/.claude-ready.json
 ```
+
+---
+
+## 📋 Release Notes
+
+### v1.1.0
+- **Fixed Windows support** — Claude Code actually stores its token in `~/.claude/.credentials.json` on all platforms. The tool now reads that file directly, making Windows work reliably with no extra setup.
+- Simplified credential logic: one file-based path for all platforms, macOS Keychain as a fallback on Mac only.
+- Improved error messages — when the token can't be found, the error now shows the exact file path that was checked.
+
+### v1.0.1
+- Initial release — macOS only
 
 ---
 
