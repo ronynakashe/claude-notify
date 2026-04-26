@@ -1,5 +1,9 @@
 # 🚀 Claude Ready
 
+[![npm version](https://img.shields.io/npm/v/claude-ready.svg)](https://www.npmjs.com/package/claude-ready)
+[![npm downloads](https://img.shields.io/npm/dw/claude-ready.svg)](https://www.npmjs.com/package/claude-ready)
+[![license](https://img.shields.io/npm/l/claude-ready.svg)](https://github.com/ronynakashe/claude-ready/blob/main/LICENSE)
+
 > ⚠️ **This is a terminal (CLI) tool — NOT a Claude command**
 > You run it in your terminal, not inside Claude.
 
@@ -133,11 +137,12 @@ claude-ready --help    # show help
 
 ---
 
-## ⚠️ Important
+## 🚧 Limitations
 
-* Your laptop must stay on (for now)
-* This is a local tool (no backend yet)
-* Your Gmail credentials never leave your machine
+- macOS only for now
+- Gmail only for now
+- Claude Code only
+- Your laptop must stay awake until the email is sent
 
 ---
 
@@ -170,7 +175,11 @@ Yeah… that won’t work 😄
 Because this is not a workflow:
 
 ```
-refresh → refresh → refresh → refresh
+- leave your computer
+- come back to check
+- see it’s still blocked
+- leave again
+- repeat like a clown
 ```
 
 ---
@@ -181,6 +190,21 @@ refresh → refresh → refresh → refresh
 * Telegram notifications
 * hosted mode (no Gmail setup)
 * smarter detection
+
+---
+
+## 🔒 Privacy & Security
+
+Claude Ready is local-first.
+
+- Your Gmail credentials are stored only on your machine
+- Nothing is sent to a backend
+- The tool reads your local Claude Code credentials from macOS Keychain
+- You can delete the config anytime:
+
+```bash
+rm ~/.claude-ready.json
+```
 
 ---
 
