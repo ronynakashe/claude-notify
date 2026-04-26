@@ -2,7 +2,9 @@
 
 const https = require("https");
 const { execFileSync } = require("child_process");
+const fs = require("fs");
 const os = require("os");
+const path = require("path");
 const nodemailer = require("nodemailer");
 const readline = require("readline");
 const { loadConfig, saveConfig } = require("./config");
@@ -43,92 +45,44 @@ async function runSetup() {
   console.log("📬 Run `claude-ready test` to send a test email.");
 }
 
+function getTokenFromFile() {
+  const configDir = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude");
+  const credPath = path.join(configDir, ".credentials.json");
+  try {
+    const creds = JSON.parse(fs.readFileSync(credPath, "utf-8"));
+    return creds?.claudeAiOauth?.accessToken || null;
+  } catch {
+    return null;
+  }
+}
+
 function getTokenMac() {
   try {
     const username = process.env.USER || os.userInfo().username;
-
     const raw = execFileSync(
       "security",
       ["find-generic-password", "-a", username, "-w", "-s", KEYCHAIN_SERVICE],
       { encoding: "utf-8", timeout: 5000 }
     ).trim();
-
     const creds = JSON.parse(raw);
-    return creds?.claudeAiOauth?.accessToken;
-  } catch (error) {
-    console.error("❌ Couldn’t read Claude token from macOS Keychain.");
-    console.error("Make sure you are logged in to Claude Code on this Mac.");
-    process.exit(1);
-  }
-}
-
-function getTokenWindows() {
-  // keytar (Claude Code’s credential lib) stores Windows Credential Manager entries
-  // as target = service + "/" + account, where account is the OS username.
-  const username = os.userInfo().username;
-  const target = `${KEYCHAIN_SERVICE}/${username}`;
-
-  const script = `
-$ProgressPreference = ‘SilentlyContinue’
-$code = @"
-using System;
-using System.Runtime.InteropServices;
-public class CredManager {
-  [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-  private struct CREDENTIAL {
-    public uint Flags; public uint Type;
-    public IntPtr TargetName; public IntPtr Comment;
-    public long LastWritten;
-    public uint CredentialBlobSize; public IntPtr CredentialBlob;
-    public uint Persist; public uint AttributeCount; public IntPtr Attributes;
-    public IntPtr TargetAlias; public IntPtr UserName;
-  }
-  [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-  private static extern bool CredRead(string target, uint type, uint flags, out IntPtr credential);
-  [DllImport("advapi32.dll")]
-  private static extern void CredFree(IntPtr credential);
-  public static string Get(string target) {
-    IntPtr ptr;
-    if (!CredRead(target, 1, 0, out ptr)) return null;
-    try {
-      var c = (CREDENTIAL)Marshal.PtrToStructure(ptr, typeof(CREDENTIAL));
-      return Marshal.PtrToStringUni(c.CredentialBlob, (int)c.CredentialBlobSize / 2);
-    } finally { CredFree(ptr); }
-  }
-}
-"@
-Add-Type -TypeDefinition $code -Language CSharp
-[CredManager]::Get(‘${target}’)
-`;
-
-  try {
-    // Base64-encode as UTF-16LE to avoid all shell quoting issues.
-    // -OutputFormat Text prevents PowerShell from wrapping output in CLIXML.
-    const encoded = Buffer.from(script, "utf16le").toString("base64");
-
-    const raw = execFileSync(
-      "powershell",
-      ["-NoProfile", "-NonInteractive", "-OutputFormat", "Text", "-EncodedCommand", encoded],
-      { encoding: "utf-8", timeout: 10000 }
-    ).trim();
-
-    const creds = JSON.parse(raw);
-    return creds?.claudeAiOauth?.accessToken;
-  } catch (error) {
-    console.error("❌ Couldn’t read Claude token from Windows Credential Manager.");
-    console.error("Make sure you are logged in to Claude Code on this Windows machine.");
-    process.exit(1);
+    return creds?.claudeAiOauth?.accessToken || null;
+  } catch {
+    return null;
   }
 }
 
 function getClaudeToken() {
-  const platform = process.platform;
+  const token = getTokenFromFile() ?? (process.platform === "darwin" ? getTokenMac() : null);
 
-  if (platform === "darwin") return getTokenMac();
-  if (platform === "win32") return getTokenWindows();
+  if (token) return token;
 
-  console.error(`❌ Unsupported platform: ${platform}.`);
-  console.error("claude-ready supports macOS and Windows only.");
+  const configDir = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude");
+  console.error("❌ Couldn’t find your Claude token.");
+  console.error(`Looked in: ${path.join(configDir, ".credentials.json")}`);
+  if (process.platform === "darwin") {
+    console.error(`         : macOS Keychain (${KEYCHAIN_SERVICE})`);
+  }
+  console.error("Make sure you are logged in to Claude Code and have run it at least once.");
   process.exit(1);
 }
 
