@@ -7,10 +7,13 @@ const os = require("os");
 const path = require("path");
 const nodemailer = require("nodemailer");
 const readline = require("readline");
-const { loadConfig, saveConfig } = require("./config");
+const { loadConfig, saveConfig, saveCloudConfig, appendSchedule } = require("./config");
 
 const KEYCHAIN_SERVICE = "Claude Code-credentials";
 const ANTHROPIC_BETA = "oauth-2025-04-20";
+
+// Hardcoded Worker endpoint — public on purpose; secrets live in the Worker.
+const WORKER_BASE_URL = "https://api.claude-ready.com";
 
 const args = process.argv.slice(2);
 
@@ -19,6 +22,8 @@ function askQuestion(rl, question) {
     rl.question(question, (answer) => resolve(answer.trim()));
   });
 }
+
+// ─── Local Gmail setup ────────────────────────────────────────────────────────
 
 async function runSetup() {
   console.log("🔧 Setting up Claude Ready...");
@@ -39,11 +44,44 @@ async function runSetup() {
     process.exit(1);
   }
 
-  saveConfig({ email, password });
+  saveConfig({ ...(loadConfig() || {}), email, password });
 
   console.log("\n✅ Config saved.");
   console.log("📬 Run `claude-ready test` to send a test email.");
 }
+
+// ─── Cloud setup ──────────────────────────────────────────────────────────────
+
+async function runCloudSetup() {
+  console.log("☁️  Setting up Claude Ready cloud mode...");
+  console.log("No Gmail password. No local waiting. Less clown behavior.\n");
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  const cloudEmail = await askQuestion(rl, "Email to notify: ");
+
+  rl.close();
+
+  if (!cloudEmail) {
+    console.log("❌ Setup failed. Email is required.");
+    process.exit(1);
+  }
+
+  saveCloudConfig({
+    cloudEmail,
+    cloudApiUrl: undefined, // legacy field — no longer stored
+    cloudEnabled: true,
+  });
+
+  console.log("\n✅ Cloud mode saved.");
+  console.log(`📡 Schedules go through: ${WORKER_BASE_URL}`);
+  console.log("📬 Run `claude-ready schedule` when Claude ghosts you.");
+}
+
+// ─── Claude token helpers ─────────────────────────────────────────────────────
 
 function getTokenFromFile() {
   const configDir = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude");
@@ -77,7 +115,7 @@ function getClaudeToken() {
   if (token) return token;
 
   const configDir = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude");
-  console.error("❌ Couldn’t find your Claude token.");
+  console.error("❌ Couldn't find your Claude token.");
   console.error(`Looked in: ${path.join(configDir, ".credentials.json")}`);
   if (process.platform === "darwin") {
     console.error(`         : macOS Keychain (${KEYCHAIN_SERVICE})`);
@@ -85,6 +123,8 @@ function getClaudeToken() {
   console.error("Make sure you are logged in to Claude Code and have run it at least once.");
   process.exit(1);
 }
+
+// ─── Claude usage API ─────────────────────────────────────────────────────────
 
 function fetchClaudeUsage(token) {
   return new Promise((resolve, reject) => {
@@ -101,27 +141,21 @@ function fetchClaudeUsage(token) {
 
     const req = https.request(options, (res) => {
       let body = "";
-
-      res.on("data", (chunk) => {
-        body += chunk;
-      });
-
+      res.on("data", (chunk) => { body += chunk; });
       res.on("end", () => {
         try {
           resolve(JSON.parse(body));
         } catch {
-          reject(new Error("Couldn’t parse Claude usage response."));
+          reject(new Error("Couldn't parse Claude usage response."));
         }
       });
     });
 
     req.on("error", reject);
-
     req.on("timeout", () => {
       req.destroy();
       reject(new Error("Request to Claude timed out."));
     });
-
     req.end();
   });
 }
@@ -159,6 +193,8 @@ function formatMinutes(ms) {
   return `${hours}h ${minutes}m`;
 }
 
+// ─── Local Gmail send ─────────────────────────────────────────────────────────
+
 function createTransporter(config) {
   return nodemailer.createTransport({
     service: "gmail",
@@ -195,22 +231,21 @@ Reset time: ${resetDate.toLocaleString()}`;
 
 async function runTest(config) {
   console.log("🧪 Sending test email...");
-
   await sendEmail(config, new Date(), true);
-
-  console.log("✅ Test email sent. If you didn’t get it, blame Gmail first.");
+  console.log("✅ Test email sent. If you didn't get it, blame Gmail first.");
 }
+
+// ─── Local notify (original mode) ────────────────────────────────────────────
 
 async function runNotify(config) {
   console.log("🔍 Checking if you broke Claude again...");
 
   const token = getClaudeToken();
   const usage = await fetchClaudeUsage(token);
-
   const fiveHour = usage?.five_hour;
 
   if (!fiveHour || fiveHour.utilization < 100) {
-    console.log("✅ Claude isn’t blocked. Go code.");
+    console.log("✅ Claude isn't blocked. Go code.");
     return;
   }
 
@@ -231,9 +266,9 @@ async function runNotify(config) {
     return;
   }
 
-  console.log("💀 Yep. You’re cooked. Claude is out.");
+  console.log("💀 Yep. You're cooked. Claude is out.");
   console.log(`⏱ Claude should be back in ${formatMinutes(delay)}.`);
-  console.log("📬 I’ll email you when it’s back. Try touching grass.");
+  console.log("📬 I'll email you when it's back. Try touching grass.");
 
   setTimeout(async () => {
     try {
@@ -247,7 +282,153 @@ async function runNotify(config) {
   }, delay);
 }
 
+// ─── Cloud schedule ───────────────────────────────────────────────────────────
+
+function postToWorker(url, payload) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify(payload);
+    const parsed = new URL(url);
+
+    const options = {
+      hostname: parsed.hostname,
+      path: parsed.pathname,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(body),
+      },
+      timeout: 10000,
+    };
+
+    const mod = parsed.protocol === "https:" ? https : require("http");
+    const req = mod.request(options, (res) => {
+      let data = "";
+      res.on("data", (chunk) => { data += chunk; });
+      res.on("end", () => {
+        try {
+          resolve(JSON.parse(data));
+        } catch {
+          reject(new Error("Invalid response from scheduling API."));
+        }
+      });
+    });
+
+    req.on("error", reject);
+    req.on("timeout", () => {
+      req.destroy();
+      reject(new Error("Scheduling API timed out."));
+    });
+
+    req.write(body);
+    req.end();
+  });
+}
+
+async function runSchedule(config) {
+  console.log("🔍 Checking if Claude rage-quit on you again...");
+
+  const token = getClaudeToken();
+  const usage = await fetchClaudeUsage(token);
+  const fiveHour = usage?.five_hour;
+
+  if (!fiveHour || fiveHour.utilization < 100) {
+    console.log("✅ Claude isn't blocked. Nothing to schedule.");
+    return;
+  }
+
+  const resetMs = parseResetTime(fiveHour.resets_at);
+
+  if (!resetMs) {
+    console.log("⚠️ Limit hit but no reset time found. Anthropic may have changed something.");
+    return;
+  }
+
+  const delay = resetMs - Date.now();
+  const sendAt = new Date(resetMs).toISOString();
+
+  console.log(`💀 Yep. Limit detected. Claude should be back in ${formatMinutes(delay)}.`);
+  console.log("☁️  Scheduling email in the cloud...");
+
+  const endpoint = `${WORKER_BASE_URL}/schedule-email`;
+  let result;
+
+  try {
+    result = await postToWorker(endpoint, {
+      email: config.cloudEmail,
+      sendAt,
+    });
+  } catch (err) {
+    console.error("❌ Failed to reach the scheduling API:", err.message);
+    process.exit(1);
+  }
+
+  if (!result.ok) {
+    console.error("❌ Scheduling failed:", result.error);
+    process.exit(1);
+  }
+
+  // Save to local history
+  appendSchedule({
+    email: config.cloudEmail,
+    sendAt,
+    createdAt: new Date().toISOString(),
+    status: "scheduled",
+    brevoMessageId: result.brevoMessageId ?? null,
+  });
+
+  const sendAtFormatted = new Date(sendAt).toLocaleString();
+  console.log("📬 Scheduled. You can close your laptop now. I'll do the annoying part.");
+  console.log(`⏱  Sends at: ${sendAtFormatted}`);
+}
+
+// ─── View local schedule history ──────────────────────────────────────────────
+
+function runShowScheduled(config) {
+  const schedules = config?.schedules;
+
+  if (!schedules || schedules.length === 0) {
+    console.log("📭 Nothing scheduled locally. Run `claude-ready schedule` first.");
+    return;
+  }
+
+  console.log("📬 Scheduled emails saved locally:\n");
+
+  schedules.forEach((entry, i) => {
+    const sendAtMs = new Date(entry.sendAt).getTime();
+    const now = Date.now();
+    const diff = sendAtMs - now;
+    const timeLabel =
+      diff > 0 ? `In: ${formatMinutes(diff)}` : "Already sent (or past due)";
+
+    console.log(`${i + 1}. Claude Ready email`);
+    console.log(`   Status: ${entry.status}`);
+    console.log(`   To: ${entry.email}`);
+    console.log(`   Sends at: ${new Date(entry.sendAt).toLocaleString()}`);
+    console.log(`   ${timeLabel}`);
+    if (entry.brevoMessageId) {
+      console.log(`   Brevo message: ${entry.brevoMessageId}`);
+    }
+    console.log();
+  });
+
+  console.log("ℹ️  This is local history only. Claude Ready does not store schedules on its servers.");
+}
+
+// ─── Clear local schedule history ────────────────────────────────────────────
+
+function runClearScheduled(config) {
+  saveCloudConfig({ schedules: [] });
+  console.log("🧹 Cleared local schedule history. The crime scene is clean.");
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
+
 async function main() {
+  if (args[0] === "cloud" && args[1] === "setup") {
+    await runCloudSetup();
+    return;
+  }
+
   if (args[0] === "setup") {
     await runSetup();
     return;
@@ -259,15 +440,47 @@ Claude Ready - Get emailed when Claude is ready again
 
 ⚠️ This is a terminal command, not a Claude command.
 
-Usage:
-  claude-ready setup   Configure Gmail
-  claude-ready test    Send test email
-  claude-ready         Email you when Claude is ready again
+Local mode (terminal must stay open):
+  claude-ready             Email you when Claude is ready again
+  claude-ready setup       Configure Gmail credentials
+  claude-ready test        Send a test email
+
+Cloud mode (close your laptop, still get the email):
+  claude-ready cloud setup    Configure cloud email
+  claude-ready schedule       Schedule a cloud notification and exit
+  claude-ready scheduled      View locally saved schedule history
+  claude-ready clear-scheduled  Clear local schedule history
+
+General:
+  claude-ready --help      Show this help
 `);
     return;
   }
 
   const config = loadConfig();
+
+  if (args[0] === "schedule") {
+    if (!config?.cloudEnabled || !config?.cloudEmail) {
+      console.log("❌ Cloud mode not configured. Run `claude-ready cloud setup` first.");
+      process.exit(1);
+    }
+    await runSchedule(config);
+    return;
+  }
+
+  if (args[0] === "scheduled") {
+    runShowScheduled(config);
+    return;
+  }
+
+  if (args[0] === "clear-scheduled") {
+    if (!config) {
+      console.log("❌ No config found. Nothing to clear.");
+      return;
+    }
+    runClearScheduled(config);
+    return;
+  }
 
   if (!config) {
     console.log("❌ Run `claude-ready setup` first.");

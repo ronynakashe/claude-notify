@@ -1,70 +1,30 @@
 # Dependencies
 node_modules/
 package-lock.json
-yarn.lock
-pnpm-lock.yaml
 
-# Environment variables and config
+# Environment
 .env
-.env.local
-.env.*.local
-config.json
+.env.*
 
 # Logs
-logs/
 *.log
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
 
-# OS-specific files
+# OS
 .DS_Store
 Thumbs.db
-.Spotlight-V100
-.Trashes
 ._*
 
-# IDE and editor files
+# IDE
 .vscode/
 .idea/
-*.sublime-project
-*.sublime-workspace
 *.swp
 *.swo
 *~
-.vim/
 
-# Editor backups
-*.bak
-*.tmp
-
-# Build outputs
-dist/
-build/
-.next/
-out/
-
-# Runtime data
-pids/
-*.pid
-*.seed
-*.pid.lock
-
-# Misc
-.cache/
-.parcel-cache
-.cache-loader
-.eslintcache
-.yarn/cache
-.yarn/unplugged
-.yarn/build-state.yml
-.yarn/install-state.gz
-
-#claude
+# Project-specific
 .claude/
 CLAUDE.md
-
-#plans&docs
-plans/
+Plans/
 docs/
+worker/

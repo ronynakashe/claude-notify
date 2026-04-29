@@ -11,27 +11,25 @@
 
 ## 💀 The Problem
 
-You hit Claude’s limit.
+You hit Claude's limit.
 
 Now you:
 
 * refresh like a maniac
 * stare at the screen
-* pretend you’re being productive
+* pretend you're being productive
 
 ---
 
 ## ✅ The Solution
 
-Run one command:
+Run one command, close your laptop, get an email when Claude is back.
+
+**No Gmail setup. No open terminal. No waiting.**
 
 ```bash
-claude-ready
+claude-ready schedule
 ```
-
-Then go live your life.
-
-We’ll email you when Claude is usable again.
 
 ---
 
@@ -41,69 +39,37 @@ We’ll email you when Claude is usable again.
 npm install -g claude-ready
 ```
 
-👉 After installing and setup, run it from your terminal:
-
-```bash
-claude-ready
-```
-
-❌ Not inside Claude
-❌ Not in chat
-✅ In your terminal (same place you run `git`, `npm`, etc.)
-
 ---
 
-## 🔐 Setup (1 minute)
+## ☁️ Quick Start — Cloud Mode
 
-Claude Ready uses **your own Gmail account** to send you notifications.
+No Gmail password. No open terminal. Just your email.
 
-### Step 1 — Enable 2FA
-
-Go to your Google Account → Security → enable 2-Step Verification
-
-### Step 2 — Create App Password
-
-Search for **App Passwords** → generate one for "Mail"
-
-### Step 3 — Run setup
+### Step 1 — One-time setup
 
 ```bash
-claude-ready setup
+claude-ready cloud setup
 ```
 
-Enter:
+Enter your email address. That's it.
 
-* your Gmail
-* your App Password
-
-Your credentials are stored locally on your machine:
+### Step 2 — Schedule when Claude blocks you
 
 ```bash
-~/.claude-ready.json
-```
-
----
-
-## 🧠 Usage
-
-When Claude blocks you:
-
-👉 Open your terminal and run:
-
-```bash
-claude-ready
+claude-ready schedule
 ```
 
 Example output:
 
 ```text
-🔍 Checking if you broke Claude again...
-💀 Yep. You’re cooked. Claude is out.
-⏱ Claude should be back in ~1h 20m.
-📬 I’ll email you when it’s back. Try touching grass.
+🔍 Checking if Claude rage-quit on you again...
+💀 Yep. Limit detected. Claude should be back in 1h 20m.
+☁️  Scheduling email in the cloud...
+📬 Scheduled. You can close your laptop now. I'll do the annoying part.
+⏱  Sends at: 4/29/2026, 5:30:00 PM
 ```
 
-Then leave your computer.
+Close your laptop. The email arrives at the exact reset time — delivered by Brevo, scheduled by our Cloudflare Worker.
 
 ---
 
@@ -128,11 +94,49 @@ Go back to coding.
 
 ## 🧪 Commands
 
+### Cloud mode
+
 ```bash
-claude-ready           # schedule notification
-claude-ready setup     # configure email
-claude-ready test      # send test email
-claude-ready --help    # show help
+claude-ready cloud setup      # one-time: save your email
+claude-ready schedule         # schedule a cloud notification, then exit
+claude-ready scheduled        # view locally saved schedule history
+claude-ready clear-scheduled  # clear local schedule history
+```
+
+### Local mode (terminal must stay open)
+
+```bash
+claude-ready             # wait locally, email when Claude is back
+claude-ready setup       # configure Gmail credentials
+claude-ready test        # send a test email
+```
+
+### General
+
+```bash
+claude-ready --help      # show help
+```
+
+---
+
+## 🖥️ Local Mode — Existing Users
+
+Already set up with Gmail? Nothing changes. `claude-ready` still works exactly as before.
+
+Local mode keeps your terminal open and sends the email directly from your Gmail when the reset fires.
+
+### Setup
+
+```bash
+claude-ready setup
+```
+
+Requires a Gmail account with 2FA enabled and an [App Password](https://myaccount.google.com/apppasswords) generated for "Mail".
+
+Your credentials are stored locally on your machine:
+
+```
+~/.claude-ready.json
 ```
 
 ---
@@ -145,9 +149,18 @@ claude-ready --help    # show help
 | Windows 10+ | ✅ Supported | Reads `~/.claude/.credentials.json` |
 | Linux | ❌ Not yet supported | — |
 
+---
+
 ## 🚧 Limitations
 
-- Gmail only for now
+### Cloud mode
+- Scheduled history is stored locally only — `claude-ready scheduled` shows local history, not live Brevo status
+- Cancellation is not supported yet
+- Email delivery only
+- Schedules must be within the next 12 hours (matches Claude's reset windows)
+
+### Local mode
+- Gmail only
 - Claude Code only
 - Your laptop must stay awake until the email is sent
 
@@ -155,9 +168,9 @@ claude-ready --help    # show help
 
 ## ⚠️ Common Mistake
 
-> “I typed `claude-ready` inside Claude and nothing happened”
+> "I typed `claude-ready` inside Claude and nothing happened"
 
-Yeah… that won’t work 😄
+Yeah… that won't work 😄
 
 👉 This is a **terminal command**, not a Claude feature.
 
@@ -165,21 +178,21 @@ Yeah… that won’t work 😄
 
 ## 🧪 Troubleshooting
 
-### ❌ Couldn’t fetch Claude usage
+### ❌ Couldn't fetch Claude usage
 
-* Make sure you’re logged into Claude Code
+* Make sure you're logged into Claude Code
 * Run Claude at least once before using this tool
 
 ### ❌ No reset time found
 
-* You haven’t hit the limit yet
+* You haven't hit the limit yet
 * Or Claude changed something (open an issue)
 
-### ❌ Couldn’t find your Claude token (Windows)
+### ❌ Couldn't find your Claude token (Windows)
 
 Claude Ready reads your token from `~/.claude/.credentials.json` — a file Claude Code creates automatically when you log in.
 
-* Make sure you’ve installed and logged into **Claude Code** (the CLI), not just the Claude web app
+* Make sure you've installed and logged into **Claude Code** (the CLI), not just the Claude web app
 * Run `claude` at least once so it can write the credentials file
 * Check the file exists: `%USERPROFILE%\.claude\.credentials.json`
 
@@ -192,7 +205,7 @@ Because this is not a workflow:
 ```
 - leave your computer
 - come back to check
-- see it’s still blocked
+- see it's still blocked
 - leave again
 - repeat like a clown
 ```
@@ -201,21 +214,18 @@ Because this is not a workflow:
 
 ## 🚀 Roadmap
 
-* background mode (no terminal needed)
 * Telegram notifications
-* hosted mode (no Gmail setup)
-* smarter detection
+* Smarter detection
+* Linux support
 
 ---
 
 ## 🔒 Privacy & Security
 
-Claude Ready is local-first.
-
-- Your Gmail credentials are stored only on your machine
-- Nothing is sent to a backend
-- The tool reads your local Claude Code credentials from `~/.claude/.credentials.json` (written by Claude Code itself), with a macOS Keychain fallback on Mac
-- You can delete the config anytime:
+- **Cloud mode**: your email address and Claude's reset time are sent to our Cloudflare Worker (`api.claude-ready.com`) and forwarded to Brevo for scheduled delivery. Nothing else is stored server-side.
+- **Local mode**: your Gmail credentials stay only on your machine. Nothing is sent to any backend.
+- The tool reads your Claude token from `~/.claude/.credentials.json` (written by Claude Code itself), with a macOS Keychain fallback on Mac.
+- Delete all local config anytime:
 
 ```bash
 rm ~/.claude-ready.json
@@ -225,8 +235,14 @@ rm ~/.claude-ready.json
 
 ## 📋 Release Notes
 
+### v2.0.0
+- **Cloud mode** — close your laptop and still get the email. No Gmail setup, no open terminal. Run `claude-ready cloud setup` once, then `claude-ready schedule` whenever Claude blocks you.
+- Scheduling is handled by a hardened Cloudflare Worker (`api.claude-ready.com`) backed by Brevo's scheduled email delivery.
+- The Worker enforces strict abuse protection: IP rate limiting, 1 KB payload cap, fixed server-side email content, 12-hour schedule window, and no CORS — it cannot be used as a general email API.
+- New commands: `cloud setup`, `schedule`, `scheduled`, `clear-scheduled`.
+
 ### v1.1.0
-- **Fixed Windows support** — Claude Code actually stores its token in `~/.claude/.credentials.json` on all platforms. The tool now reads that file directly, making Windows work reliably with no extra setup.
+- **Fixed Windows support** — Claude Code stores its token in `~/.claude/.credentials.json` on all platforms. The tool now reads that file directly, making Windows work reliably with no extra setup.
 - Simplified credential logic: one file-based path for all platforms, macOS Keychain as a fallback on Mac only.
 - Improved error messages — when the token can't be found, the error now shows the exact file path that was checked.
 
