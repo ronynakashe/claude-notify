@@ -26,5 +26,10 @@
   "license": "MIT",
   "dependencies": {
     "nodemailer": "^8.0.6"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ronynakashe/claude-ready"
+  },
+  "homepage": "https://claude-ready.com"
 }
