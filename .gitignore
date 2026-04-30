@@ -28,3 +28,7 @@ CLAUDE.md
 Plans/
 docs/
 worker/
+public/
+firebase.json
+.firebase
+
